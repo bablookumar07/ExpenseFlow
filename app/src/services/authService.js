@@ -1,7 +1,7 @@
 
 import api from "./api";
 
-// Register a new user
+// Register
 export const registerUser = async (userData) => {
   const response = await api.post("/auth/register", userData);
 
@@ -12,7 +12,7 @@ export const registerUser = async (userData) => {
   return response.data;
 };
 
-// Login existing user
+// Login
 export const loginUser = async (credentials) => {
   const response = await api.post("/auth/login", credentials);
 
@@ -23,12 +23,33 @@ export const loginUser = async (credentials) => {
   return response.data;
 };
 
-// Logout user
+// Update profile
+export const updateUserProfile = async (profileData) => {
+  const response = await api.put("/auth/profile", profileData);
+  return response.data;
+};
+
+// Change password
+export const changeUserPassword = async (passwordData) => {
+  const response = await api.put("/auth/change-password", passwordData);
+  return response.data;
+};
+
+// Delete account
+export const deleteUserAccount = async (password) => {
+  const response = await api.delete("/auth/delete-account", {
+    data: { password },
+  });
+
+  return response.data;
+};
+
+// Logout
 export const logoutUser = () => {
   localStorage.removeItem("expenseflow-token");
 };
 
-// Get stored authentication token
+// Get token
 export const getToken = () => {
   return localStorage.getItem("expenseflow-token");
 };

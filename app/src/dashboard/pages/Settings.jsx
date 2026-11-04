@@ -1,391 +1,219 @@
 
-import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
-
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  User,
-  Palette,
-  IndianRupee,
-  Bell,
+  UserRound,
   ShieldCheck,
-  Settings as SettingsIcon,
-  Sun,
-  Moon,
-  Check,
-  CalendarDays,
+  LockKeyhole,
+  Trash2,
+  Save,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
-const sections = [
-  {
-    id: "account",
-    title: "Account Settings",
-    description: "Manage your personal account information.",
-    icon: User,
-  },
-  {
-    id: "appearance",
-    title: "Appearance",
-    description: "Customize your dashboard experience.",
-    icon: Palette,
-  },
-  {
-    id: "currency",
-    title: "Currency",
-    description: "Choose your preferred display currency.",
-    icon: IndianRupee,
-  },
-  {
-  id: "preferences",
-  title: "Preferences",
-  description: "Customize date, language and regional settings.",
-  icon: CalendarDays,
-},
-  {
-    id: "notifications",
-    title: "Notifications",
-    description: "Manage your notification preferences.",
-    icon: Bell,
-  },
-  {
-    id: "security",
-    title: "Privacy & Security",
-    description: "Manage your account security.",
-    icon: ShieldCheck,
-  },
-];
+import { useAuth } from "../../context/AuthContext";
 
 const Settings = () => {
   const {
-    theme,
-    toggleTheme,
-    currency,
-    updateCurrency,
-  } = useOutletContext();
+    user,
+    updateProfile,
+    changePassword,
+    deleteAccount,
+    logout,
+  } = useAuth();
 
-  const isDark = theme === "dark";
+  const navigate = useNavigate();
 
-  const [activeSection, setActiveSection] = useState("account");
+  const [profile, setProfile] = useState({
+    name: user?.name || "",
+    email: user?.email || "",
+  });
 
-  const [notifications, setNotifications] = useState(
-    () => localStorage.getItem("expenseflow-notifications") !== "false"
-  );
-  
-  // Load saved preferences
-const [dateFormat, setDateFormat] = useState(
-  () => localStorage.getItem("expenseflow-date-format") || "DD/MM/YYYY"
-);
+  const [passwords, setPasswords] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-const [weekStartsOn, setWeekStartsOn] = useState(
-  () => localStorage.getItem("expenseflow-week-start") || "Monday"
-);
+  const [deletePassword, setDeletePassword] = useState("");
 
-const [language, setLanguage] = useState(
-  () => localStorage.getItem("expenseflow-language") || "English"
-);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
 
-  const [savedMessage, setSavedMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Save notification preferences
-  // Save notification and general preferences
-const handleSave = () => {
-  if (activeSection === "notifications") {
-    localStorage.setItem(
-      "expenseflow-notifications",
-      String(notifications)
-    );
+  const [profileMessage, setProfileMessage] = useState({
+    type: "",
+    text: "",
+  });
 
-    setSavedMessage("Notification preferences saved successfully!");
-  }
+  const [passwordMessage, setPasswordMessage] = useState({
+    type: "",
+    text: "",
+  });
 
-  if (activeSection === "preferences") {
-    localStorage.setItem("expenseflow-date-format", dateFormat);
-    localStorage.setItem("expenseflow-week-start", weekStartsOn);
-    localStorage.setItem("expenseflow-language", language);
+  const [deleteMessage, setDeleteMessage] = useState("");
 
-    setSavedMessage("Preferences saved successfully!");
-  }
+  // Keep form synchronized with authenticated user
+  useEffect(() => {
+    setProfile({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+  }, [user]);
 
-  setTimeout(() => {
-    setSavedMessage("");
-  }, 2500);
-};
+  const getErrorMessage = (error) =>
+    error.response?.data?.message ||
+    error.message ||
+    "Something went wrong. Please try again.";
 
-  // Settings content
-  const renderContent = () => {
-    switch (activeSection) {
-      case "account":
-        return (
-          <>
-            <h2 className="text-lg font-semibold">Account Settings</h2>
+  // Update profile
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
 
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Manage your personal account information.
-            </p>
+    setProfileMessage({ type: "", text: "" });
 
-            <div className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-              <p className="font-medium">Personal Information</p>
+    if (!profile.name.trim() || !profile.email.trim()) {
+      setProfileMessage({
+        type: "error",
+        text: "Name and email are required.",
+      });
+      return;
+    }
 
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Profile management will be available after connecting
-                account authentication.
-              </p>
-            </div>
-          </>
-        );
+    try {
+      setLoading(true);
 
-      case "appearance":
-        return (
-          <>
-            <h2 className="text-lg font-semibold">Appearance</h2>
+      await updateProfile({
+        name: profile.name.trim(),
+        email: profile.email.trim(),
+      });
 
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Customize how ExpenseFlow looks on your device.
-            </p>
-
-            <div className="mt-6">
-              <h3 className="mb-4 text-sm font-semibold">
-                Choose Theme
-              </h3>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isDark) toggleTheme();
-                  }}
-                  className={`rounded-xl border p-5 text-left transition ${
-                    !isDark
-                      ? "border-purple-500 bg-purple-50 dark:bg-purple-500/10"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <Sun size={25} className="text-amber-500" />
-
-                    {!isDark && (
-                      <Check size={19} className="text-purple-600" />
-                    )}
-                  </div>
-
-                  <p className="mt-4 font-semibold">Light Mode</p>
-
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Clean and bright appearance.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isDark) toggleTheme();
-                  }}
-                  className={`rounded-xl border p-5 text-left transition ${
-                    isDark
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <Moon size={25} className="text-violet-500" />
-
-                    {isDark && (
-                      <Check size={19} className="text-purple-500" />
-                    )}
-                  </div>
-
-                  <p className="mt-4 font-semibold">Dark Mode</p>
-
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Comfortable dark appearance.
-                  </p>
-                </button>
-              </div>
-
-              <p className="mt-4 text-xs text-emerald-600 dark:text-emerald-400">
-                Theme changes are applied immediately and saved automatically.
-              </p>
-            </div>
-          </>
-        );
-
-      case "currency":
-        return (
-          <>
-            <h2 className="text-lg font-semibold">Currency Settings</h2>
-
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Select your preferred currency for ExpenseFlow.
-            </p>
-
-            <div className="mt-6">
-              <label className="mb-3 block text-sm font-medium">
-                Preferred Currency
-              </label>
-
-              <select
-                value={currency}
-                onChange={(e) => {
-                  updateCurrency(e.target.value);
-                  setSavedMessage("Currency preference updated!");
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-              >
-                <option value="INR">INR - Indian Rupee (₹)</option>
-                <option value="USD">USD - US Dollar ($)</option>
-                <option value="EUR">EUR - Euro (€)</option>
-                <option value="GBP">GBP - British Pound (£)</option>
-              </select>
-
-              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                Your preference is saved automatically.
-              </p>
-
-              {savedMessage && (
-                <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-                  {savedMessage}
-                </p>
-              )}
-            </div>
-          </>
-        );
-
-        case "preferences":
-  return (
-    <>
-      <h2 className="text-lg font-semibold">Preferences</h2>
-
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-        Customize your regional and display preferences.
-      </p>
-
-      <div className="mt-6 space-y-6">
-        {/* Date Format */}
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            Date Format
-          </label>
-
-          <select
-            value={dateFormat}
-            onChange={(e) => setDateFormat(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-          >
-            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-          </select>
-        </div>
-
-        {/* Week Start */}
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            Week Starts On
-          </label>
-
-          <select
-            value={weekStartsOn}
-            onChange={(e) => setWeekStartsOn(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-          >
-            <option value="Monday">Monday</option>
-            <option value="Sunday">Sunday</option>
-          </select>
-        </div>
-
-        {/* Language */}
-        <div>
-          <label className="mb-2 block text-sm font-medium">
-            Language
-          </label>
-
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-purple-500 dark:border-slate-700 dark:bg-slate-800"
-          >
-            <option value="English">English</option>
-          </select>
-
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-            More languages will be available in future updates.
-          </p>
-        </div>
-      </div>
-    </>
-  );
-
-      case "notifications":
-        return (
-          <>
-            <h2 className="text-lg font-semibold">Notifications</h2>
-
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Manage your notification preferences.
-            </p>
-
-            <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-              <div>
-                <p className="font-medium">
-                  Application Notifications
-                </p>
-
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Enable or disable application notifications.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setNotifications((prev) => !prev);
-                  setSavedMessage("");
-                }}
-                aria-label="Toggle notifications"
-                aria-pressed={notifications}
-                className={`relative h-6 w-11 rounded-full transition ${
-                  notifications ? "bg-purple-600" : "bg-slate-400"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
-                    notifications ? "left-6" : "left-1"
-                  }`}
-                />
-              </button>
-            </div>
-          </>
-        );
-
-      case "security":
-        return (
-          <>
-            <h2 className="text-lg font-semibold">
-              Privacy & Security
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Manage your account privacy and security.
-            </p>
-
-            <div className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-              <p className="font-medium">Security Settings</p>
-
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Password management and security features will be
-                connected with backend authentication.
-              </p>
-            </div>
-          </>
-        );
-
-      default:
-        return null;
+      setProfileMessage({
+        type: "success",
+        text: "Profile updated successfully!",
+      });
+    } catch (error) {
+      setProfileMessage({
+        type: "error",
+        text: getErrorMessage(error),
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const showSaveButton =
-  activeSection === "notifications" ||
-  activeSection === "preferences";
+  // Change password
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+
+    setPasswordMessage({ type: "", text: "" });
+
+    if (
+      !passwords.currentPassword ||
+      !passwords.newPassword ||
+      !passwords.confirmPassword
+    ) {
+      setPasswordMessage({
+        type: "error",
+        text: "Please fill in all password fields.",
+      });
+      return;
+    }
+
+    if (passwords.newPassword.length < 8) {
+      setPasswordMessage({
+        type: "error",
+        text: "New password must contain at least 8 characters.",
+      });
+      return;
+    }
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setPasswordMessage({
+        type: "error",
+        text: "New password and confirmation do not match.",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await changePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      });
+
+      setPasswordMessage({
+        type: "success",
+        text: "Password changed successfully. Please login again.",
+      });
+
+      setPasswords({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      // End the current session after password change
+      setTimeout(() => {
+        logout();
+        navigate("/login", { replace: true });
+      }, 1500);
+    } catch (error) {
+      setPasswordMessage({
+        type: "error",
+        text: getErrorMessage(error),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete account
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+
+    if (!deletePassword) {
+      setDeleteMessage("Please enter your password.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you absolutely sure? Your account and all transactions will be permanently deleted."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setLoading(true);
+      setDeleteMessage("");
+
+      await deleteAccount(deletePassword);
+
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setDeleteMessage(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputClass =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white";
+
+  const buttonClass =
+    "inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60";
+
+  const messageClass = (type) =>
+    `mt-4 rounded-xl px-4 py-3 text-sm ${
+      type === "success"
+        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+        : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+    }`;
 
   return (
     <div className="min-h-screen space-y-8 p-4 text-slate-900 dark:text-white sm:p-6 lg:p-8">
@@ -393,80 +221,272 @@ const handleSave = () => {
       {/* Header */}
       <div>
         <div className="mb-2 flex items-center gap-2 text-purple-600 dark:text-purple-400">
-          <SettingsIcon size={20} />
-          <span className="text-sm font-semibold">Preferences</span>
+          <ShieldCheck size={20} />
+          <span className="text-sm font-semibold">Account Management</span>
         </div>
 
         <h1 className="text-3xl font-bold">Settings</h1>
 
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Manage your account and customize your ExpenseFlow experience.
+          Manage your personal information and account security.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* Account Settings */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="rounded-xl bg-purple-100 p-3 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
+            <UserRound size={22} />
+          </div>
 
-        {/* Settings Navigation */}
-        <div className="space-y-4">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+          <div>
+            <h2 className="text-lg font-bold">Account Settings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Update your personal information.
+            </p>
+          </div>
+        </div>
 
-            return (
+        <form onSubmit={handleProfileUpdate} className="space-y-5">
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Full Name
+            </label>
+
+            <input
+              type="text"
+              value={profile.name}
+              onChange={(e) =>
+                setProfile({ ...profile, name: e.target.value })
+              }
+              maxLength={50}
+              required
+              className={inputClass}
+              placeholder="Enter your full name"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium">
+              Email Address
+            </label>
+
+            <input
+              type="email"
+              value={profile.email}
+              onChange={(e) =>
+                setProfile({ ...profile, email: e.target.value })
+              }
+              required
+              className={inputClass}
+              placeholder="Enter your email address"
+            />
+          </div>
+
+          <button type="submit" disabled={loading} className={buttonClass}>
+            {loading ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <Save size={17} />
+            )}
+            Save Changes
+          </button>
+
+          {profileMessage.text && (
+            <p className={messageClass(profileMessage.type)}>
+              {profileMessage.text}
+            </p>
+          )}
+        </form>
+      </section>
+
+      {/* Security Settings */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="rounded-xl bg-blue-100 p-3 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+            <LockKeyhole size={22} />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold">Security Settings</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Keep your account secure by updating your password.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handlePasswordChange} className="space-y-5">
+          {[
+            {
+              label: "Current Password",
+              name: "currentPassword",
+              placeholder: "Enter current password",
+            },
+            {
+              label: "New Password",
+              name: "newPassword",
+              placeholder: "Enter new password",
+            },
+            {
+              label: "Confirm New Password",
+              name: "confirmPassword",
+              placeholder: "Confirm new password",
+            },
+          ].map((field) => (
+            <div key={field.name}>
+              <label className="mb-2 block text-sm font-medium">
+                {field.label}
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  value={passwords[field.name]}
+                  onChange={(e) =>
+                    setPasswords({
+                      ...passwords,
+                      [field.name]: e.target.value,
+                    })
+                  }
+                  placeholder={field.placeholder}
+                  autoComplete="off"
+                  required
+                  className={`${inputClass} pr-12`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords(!showPasswords)}
+                  aria-label={
+                    showPasswords ? "Hide passwords" : "Show passwords"
+                  }
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-600"
+                >
+                  {showPasswords ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Your new password must contain at least 8 characters.
+            You will be asked to login again after changing it.
+          </p>
+
+          <button type="submit" disabled={loading} className={buttonClass}>
+            {loading ? (
+              <Loader2 size={17} className="animate-spin" />
+            ) : (
+              <LockKeyhole size={17} />
+            )}
+            Update Password
+          </button>
+
+          {passwordMessage.text && (
+            <p className={messageClass(passwordMessage.type)}>
+              {passwordMessage.text}
+            </p>
+          )}
+        </form>
+      </section>
+
+      {/* Danger Zone */}
+      <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm dark:border-red-500/30 dark:bg-slate-900 sm:p-7">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="rounded-xl bg-red-100 p-3 text-red-600 dark:bg-red-500/10 dark:text-red-400">
+            <AlertTriangle size={22} />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-bold text-red-600 dark:text-red-400">
+              Danger Zone
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Permanently remove your account and associated data.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-semibold">Delete Account</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              All your transactions will also be deleted.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowDeleteForm(!showDeleteForm);
+              setDeleteMessage("");
+              setDeletePassword("");
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-300 px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/40 dark:hover:bg-red-500/10"
+          >
+            <Trash2 size={17} />
+            Delete Account
+          </button>
+        </div>
+
+        {showDeleteForm && (
+          <form
+            onSubmit={handleDeleteAccount}
+            className="mt-6 space-y-4 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-500/20 dark:bg-red-500/5"
+          >
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              This action is permanent and cannot be undone.
+            </p>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Confirm your password
+              </label>
+
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter your current password"
+                required
+                autoComplete="current-password"
+                className={inputClass}
+              />
+            </div>
+
+            {deleteMessage && (
+              <p className={messageClass("error")}>{deleteMessage}</p>
+            )}
+
+            <div className="flex flex-wrap gap-3">
               <button
-                key={section.id}
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {loading ? (
+                  <Loader2 size={17} className="animate-spin" />
+                ) : (
+                  <Trash2 size={17} />
+                )}
+                Permanently Delete
+              </button>
+
+              <button
                 type="button"
                 onClick={() => {
-                  setActiveSection(section.id);
-                  setSavedMessage("");
+                  setShowDeleteForm(false);
+                  setDeletePassword("");
+                  setDeleteMessage("");
                 }}
-                aria-pressed={isActive}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition ${
-                  isActive
-                    ? "border-purple-500 bg-purple-500/10"
-                    : "border-slate-200 bg-white hover:border-purple-400 dark:border-slate-800 dark:bg-slate-900"
-                }`}
+                className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
               >
-                <div className="rounded-xl bg-purple-100 p-3 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400">
-                  <Icon size={21} />
-                </div>
-
-                <div>
-                  <h3 className="font-semibold">{section.title}</h3>
-
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {section.description}
-                  </p>
-                </div>
+                Cancel
               </button>
-            );
-          })}
-        </div>
-
-        {/* Settings Content */}
-        <div className="min-h-[400px] rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
-
-          {renderContent()}
-
-          {showSaveButton && (
-            <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={handleSave}
-                className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700"
-              >
-                Save Preferences
-              </button>
-
-              {savedMessage && (
-                <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">
-                  {savedMessage}
-                </p>
-              )}
             </div>
-          )}
-        </div>
-      </div>
+          </form>
+        )}
+      </section>
     </div>
   );
 };

@@ -27,11 +27,10 @@ app.use(helmet());
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
-
 // Parse incoming JSON
 app.use(express.json({ limit: "10kb" }));
 

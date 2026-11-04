@@ -1,7 +1,4 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 import {
   Wallet,
   LayoutDashboard,
@@ -34,14 +31,19 @@ const navigation = [
   },
 ];
 
-const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
-  const [collapsed, setCollapsed] = useState(false);
-  const navigate = useNavigate();
+const Sidebar = ({
+  activePage = "Overview",
+  theme = "light",
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+  collapsible = true,
+}) => {
   const isDark = theme === "dark";
 
   return (
     <aside
-      className={`relative flex h-screen shrink-0 flex-col border-r transition-all duration-300 ${
+      className={`relative flex h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-in-out ${
         isDark
           ? "border-white/10 bg-slate-950 text-white"
           : "border-slate-200 bg-white text-slate-900"
@@ -49,7 +51,7 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
     >
       {/* Brand */}
       <div
-        className={`flex h-20 items-center justify-between border-b px-5 ${
+        className={`flex h-20 shrink-0 items-center justify-between border-b px-5 ${
           isDark ? "border-white/10" : "border-slate-200"
         }`}
       >
@@ -65,27 +67,34 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
           )}
         </div>
 
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`hidden rounded-lg p-2 transition lg:block ${
-            isDark
-              ? "text-slate-400 hover:bg-white/10 hover:text-white"
-              : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          {collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
-        </button>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={`hidden rounded-lg p-2 transition lg:block ${
+              isDark
+                ? "text-slate-400 hover:bg-white/10 hover:text-white"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={19} />
+            ) : (
+              <PanelLeftClose size={19} />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-8 overflow-y-auto px-4 py-7">
+      <nav className="flex-1 space-y-8 overflow-y-auto overflow-x-hidden px-4 py-7">
         {navigation.map((group) => (
           <div key={group.title}>
             {!collapsed && (
               <p
-                className={`mb-4 px-3 text-[10px] font-bold tracking-[0.18em] ${
+                className={`mb-4 whitespace-nowrap px-3 text-[10px] font-bold tracking-[0.18em] ${
                   isDark ? "text-slate-500" : "text-slate-400"
                 }`}
               >
@@ -102,7 +111,7 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
                   <button
                     key={item.name}
                     type="button"
-                    onClick={() => navigate(item.path)}
+                    onClick={() => onNavigate?.(item.name)}
                     title={collapsed ? item.name : undefined}
                     aria-current={isActive ? "page" : undefined}
                     className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
@@ -121,12 +130,12 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
 
                     {!collapsed && (
                       <>
-                        <span>{item.name}</span>
+                        <span className="whitespace-nowrap">{item.name}</span>
 
                         {isActive && (
                           <ChevronRight
                             size={16}
-                            className="ml-auto text-violet-500"
+                            className="ml-auto shrink-0 text-violet-500"
                           />
                         )}
                       </>
@@ -141,7 +150,7 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
 
       {/* Sidebar Bottom */}
       <div
-        className={`border-t p-4 ${
+        className={`shrink-0 border-t p-4 ${
           isDark ? "border-white/10" : "border-slate-200"
         }`}
       >
@@ -152,7 +161,7 @@ const Sidebar = ({ activePage = "Overview", theme = "light" }) => {
               : "from-violet-100 to-blue-100"
           } ${collapsed ? "flex justify-center" : ""}`}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/20 text-violet-500">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-500">
             <Wallet size={19} />
           </div>
 

@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
+
 import {
   Wallet,
   TrendingUp,
@@ -16,6 +17,7 @@ import CategoryBreakdown from "../widgets/CategoryBreakdown";
 import TransactionList from "../widgets/TransactionList";
 import TransactionModal from "../widgets/TransactionModal";
 import EditTransactionModal from "../widgets/EditTransactionModal";
+import ExportModal from "../widgets/ExportModal";
 
 import useTransactions from "../../hooks/useTransactions";
 
@@ -23,12 +25,28 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  getTransactions,
 } from "../../services/transactionService";
 
 import {
   convertCurrency,
   formatCurrency as formatMoney,
 } from "../../utils/currencyUtils";
+
+import { useAuth } from "../../context/AuthContext";
+
+import {
+  exportTransactionsToExcel,
+  exportTransactionsToCSV,
+} from "../../utils/exportUtils";
+
+import {
+  exportTransactionsToPDF,
+} from "../../utils/pdfExportUtils";
+
+import {
+  printTransactionsReport,
+} from "../../utils/printExportUtils";
 
 // Get saved filters
 const getInitialFilters = () => {
@@ -67,8 +85,14 @@ const Dashboard = () => {
     ratesError,
   } = useOutletContext();
 
+  const { user } = useAuth();
+
+  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   // Selected filters
@@ -188,88 +212,188 @@ const Dashboard = () => {
     return formatMoney(amount, currency, exchangeRates);
   };
 
-  // Dashboard chart demo data (original values are INR)
- // Dynamic chart data from actual transactions
-const monthlyTotals = transactions.reduce((acc, item) => {
-  const transactionDate = new Date(item.date);
+  // Dynamic chart data from actual transactions
+  const monthlyTotals = transactions.reduce((acc, item) => {
+    const transactionDate = new Date(item.date);
 
-  if (Number.isNaN(transactionDate.getTime())) {
-    return acc;
-  }
+    if (Number.isNaN(transactionDate.getTime())) {
+      return acc;
+    }
 
-  const year = transactionDate.getFullYear();
-  const month = transactionDate.getMonth();
+    const year = transactionDate.getFullYear();
+    const month = transactionDate.getMonth();
 
-  const key = `${year}-${month}`;
+    const key = `${year}-${month}`;
 
-  if (!acc[key]) {
-    acc[key] = {
-      year,
-      month,
-      income: 0,
-      expense: 0,
-    };
-  }
+    if (!acc[key]) {
+      acc[key] = {
+        year,
+        month,
+        income: 0,
+        expense: 0,
+      };
+    }
 
-  const amount = Number(item.amount) || 0;
+    const amount = Number(item.amount) || 0;
 
-  if (item.type === "income") {
-    acc[key].income += amount;
-  } else if (item.type === "expense") {
-    acc[key].expense += amount;
-  }
-
-  return acc;
-}, {});
-
-const chartData = Object.values(monthlyTotals)
-  .sort((a, b) => a.year - b.year || a.month - b.month)
-  .map((item) => ({
-    month: new Date(item.year, item.month).toLocaleDateString("en-IN", {
-      month: "short",
-      year: "numeric",
-    }),
-    income: canConvert
-      ? convertCurrency(item.income, currency, exchangeRates)
-      : 0,
-    expense: canConvert
-      ? convertCurrency(item.expense, currency, exchangeRates)
-      : 0,
-  }));
-  // Category demo data (original values are INR)
-  const categoryColors = [
-  "#8B5CF6",
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EC4899",
-  "#06B6D4",
-  "#F97316",
-  "#6366F1",
-];
-
-const categoryTotals = transactions
-  .filter((item) => item.type === "expense")
-  .reduce((acc, item) => {
-    const categoryName = item.category?.trim() || "Other";
-
-    acc[categoryName] =
-      (acc[categoryName] || 0) + Number(item.amount || 0);
+    if (item.type === "income") {
+      acc[key].income += amount;
+    } else if (item.type === "expense") {
+      acc[key].expense += amount;
+    }
 
     return acc;
   }, {});
 
-const categoryData = Object.entries(categoryTotals)
-  .map(([name, amount], index) => ({
-    name,
-    amount,
-    color: categoryColors[index % categoryColors.length],
-  }))
-  .sort((a, b) => b.amount - a.amount);
+  const chartData = Object.values(monthlyTotals)
+    .sort((a, b) => a.year - b.year || a.month - b.month)
+    .map((item) => ({
+      month: new Date(item.year, item.month).toLocaleDateString("en-IN", {
+        month: "short",
+        year: "numeric",
+      }),
+      income: canConvert
+        ? convertCurrency(item.income, currency, exchangeRates)
+        : 0,
+      expense: canConvert
+        ? convertCurrency(item.expense, currency, exchangeRates)
+        : 0,
+    }));
 
-  // Export
+  // Category data
+  const categoryColors = [
+    "#8B5CF6",
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#EC4899",
+    "#06B6D4",
+    "#F97316",
+    "#6366F1",
+  ];
+
+  const categoryTotals = transactions
+    .filter((item) => item.type === "expense")
+    .reduce((acc, item) => {
+      const categoryName = item.category?.trim() || "Other";
+
+      acc[categoryName] =
+        (acc[categoryName] || 0) + Number(item.amount || 0);
+
+      return acc;
+    }, {});
+
+  const categoryData = Object.entries(categoryTotals)
+    .map(([name, amount], index) => ({
+      name,
+      amount,
+      color: categoryColors[index % categoryColors.length],
+    }))
+    .sort((a, b) => b.amount - a.amount);
+
+  // Open Export Modal
   const handleExport = () => {
-    console.log("Export clicked");
+    setIsExportModalOpen(true);
+  };
+
+  // Export Excel, PDF, CSV and Print
+  const handleExportSubmit = async (options) => {
+    let printWindow = null;
+
+    try {
+      // Open print window before awaiting API request.
+      if (options.format === "print") {
+        printWindow = window.open("about:blank", "_blank");
+
+        if (!printWindow) {
+          throw new Error(
+            "Pop-up blocked. Please allow pop-ups for ExpenseFlow and try again."
+          );
+        }
+      }
+
+      setIsExporting(true);
+
+      if (!canConvert) {
+        throw new Error(
+          "Exchange rates are unavailable. Please try again later."
+        );
+      }
+
+      // Fetch fresh transactions from authenticated API
+      const response = await getTransactions();
+
+      const allTransactions = Array.isArray(response?.data)
+        ? response.data
+        : [];
+
+      const exportConfig = {
+        transactions: allTransactions,
+        options,
+        currency,
+        convertAmount: (amount) =>
+          convertCurrency(amount, currency, exchangeRates),
+      };
+
+      const userName = user?.name || "ExpenseFlow User";
+
+      let count = 0;
+
+      switch (options.format) {
+        case "excel":
+          count = exportTransactionsToExcel({
+            ...exportConfig,
+            userName,
+          });
+          break;
+
+        case "pdf":
+          count = exportTransactionsToPDF({
+            ...exportConfig,
+            userName,
+          });
+          break;
+
+        case "csv":
+          count = exportTransactionsToCSV(exportConfig);
+          break;
+
+        case "print":
+          count = printTransactionsReport({
+            ...exportConfig,
+            userName,
+            printWindow,
+          });
+          break;
+
+        default:
+          throw new Error("Unsupported export format.");
+      }
+
+      if (options.format !== "print") {
+        alert(`${count} transactions exported successfully!`);
+      }
+
+      setIsExportModalOpen(false);
+
+      return true;
+    } catch (err) {
+      console.error("Export failed:", err);
+
+      if (printWindow && !printWindow.closed) {
+        printWindow.close();
+      }
+
+      alert(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to export transactions."
+      );
+
+      return false;
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Calculate dashboard statistics from original INR transactions
@@ -285,6 +409,7 @@ const categoryData = Object.entries(categoryTotals)
 
   return (
     <div className="space-y-8">
+
       {/* Header */}
       <DashboardHeader
         onAddTransaction={() => setIsModalOpen(true)}
@@ -424,6 +549,15 @@ const categoryData = Object.entries(categoryTotals)
         }}
         onSubmit={handleUpdateTransaction}
       />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExportSubmit}
+        isExporting={isExporting}
+      />
+
     </div>
   );
 };

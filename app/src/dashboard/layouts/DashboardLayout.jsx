@@ -27,6 +27,7 @@ const DashboardLayout = ({
   const location = useLocation();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const getActivePage = () => {
     const path = location.pathname;
@@ -63,13 +64,16 @@ const DashboardLayout = ({
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden lg:block">
         <Sidebar
           activePage={activePage}
           onNavigate={handleNavigation}
           theme={theme}
+          collapsed={isSidebarCollapsed}
+          onToggleCollapse={() =>
+            setIsSidebarCollapsed((previous) => !previous)
+          }
         />
       </aside>
 
@@ -95,6 +99,8 @@ const DashboardLayout = ({
                 activePage={activePage}
                 onNavigate={handleNavigation}
                 theme={theme}
+                collapsed={false}
+                collapsible={false}
               />
             </div>
           </aside>
@@ -102,7 +108,11 @@ const DashboardLayout = ({
       )}
 
       {/* Main Content */}
-      <div className="min-h-screen lg:pl-[260px]">
+      <div
+        className={`min-h-screen transition-[padding] duration-300 ease-in-out ${
+          isSidebarCollapsed ? "lg:pl-[88px]" : "lg:pl-[260px]"
+        }`}
+      >
         <Topbar
           title={activePage}
           theme={theme}
@@ -110,8 +120,8 @@ const DashboardLayout = ({
           onMenuClick={() => setIsMobileMenuOpen(true)}
         />
 
-        <main className="p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-[1600px]">
+        <main className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto w-full max-w-[1600px] min-w-0">
             <Outlet
               context={{
                 theme,
